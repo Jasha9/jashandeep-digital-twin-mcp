@@ -1,4 +1,4 @@
-{
+﻿{
   "servers": {
     "digital-twin-mcp": {
       "type": "http",

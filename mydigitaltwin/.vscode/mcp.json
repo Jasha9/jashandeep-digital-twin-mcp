@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "digital-twin-http": {
+      "type": "http",
+      "url": "http://localhost:3000/api/mcp"
+    }
+  }
+}

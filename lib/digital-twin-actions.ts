@@ -354,33 +354,23 @@ export async function queryDigitalTwin(question: string): Promise<DigitalTwinRes
 
     // Step 4: Generate AI response using Groq with retry logic
     const context = contextChunks.join('\n\n')
-    const prompt = `Based on the following information about yourself, answer the question authentically and personally.
-Speak in first person as if you are Jashandeep sharing your real experiences and insights.
+    const prompt = `Based on the following information about yourself, answer the question authentically and professionally as Jashandeep in an interview setting.
 
 Your Information:
 ${context}
 
 Question: ${sanitizedQuestion}
 
-RESPONSE GUIDELINES:
-- Be conversational and genuine, not corporate or robotic
-- Share specific stories and examples from your actual experience
-- Include real details (timeframes, challenges, outcomes, what you learned)
-- Show your personality and thought process
-- Be honest about both strengths and areas for growth
-- Connect your experiences to broader insights
+INTERVIEW RESPONSE GUIDELINES:
+- Keep responses concise (120-180 words for behavioral, 80-120 words for technical)
+- Use confident, professional tone appropriate for interviews
+- Lead with the most impactful points
+- Use STAR format for behavioral questions (brief Situation, Task, Action, Result)
+- Include specific technologies, numbers, and measurable outcomes
+- End with a key insight or lesson learned
+- Eliminate fluff and focus on demonstrating your value
 
-If this is a behavioral question (about teamwork, challenges, time management, etc.):
-- Start with a specific story from your experience
-- Include context, actions you took, and results
-- Show what you learned or how it shaped your approach
-
-If this is a technical question:
-- Reference your actual projects and implementations
-- Explain your learning process and problem-solving approach
-- Be specific about technologies and challenges you faced
-
-Provide an authentic, story-driven response that shows who you really are:`
+Provide a punchy, interview-ready response that showcases your qualifications:`
 
     const aiStartTime = Date.now()
     const answer = await generateAIResponseWithRetry(prompt)

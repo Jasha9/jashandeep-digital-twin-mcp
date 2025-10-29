@@ -1,10 +1,12 @@
-﻿{
+{
   "servers": {
-    "digital-twin-mcp": {
+    "digital-twin-production": {
       "type": "http",
-      "url": "http://localhost:3000/api/mcp",
-      "timeout": 30000,
-      "description": "Digital Twin RAG MCP Server for interview preparation"
+      "url": "https://jashandeep-digital-twin-mcp.vercel.app/api/mcp"
+    },
+    "digital-twin-local": {
+      "type": "http",
+      "url": "http://localhost:3000/api/mcp"
     }
   }
 }

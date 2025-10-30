@@ -528,8 +528,43 @@ async function queryDigitalTwinEnhanced(question: string): Promise<DigitalTwinRe
       }))
     }
     
-    // Use the enhanced RAG pipeline
-    const enhanced = await monitoredRAGQuery(question, vectorSearchFn)
+    // Use the enhanced RAG pipeline - inline implementation
+    const startTime = Date.now()
+    const detectedInterviewType = detectInterviewType(question)
+    
+    // Enhanced query processing
+    const enhanceStart = Date.now()
+    const enhancedQuery = await enhanceQuery(question, detectedInterviewType)
+    const queryEnhancementTime = Date.now() - enhanceStart
+    
+    // Vector search with enhanced query
+    const searchStart = Date.now()
+    const vectorResults = await vectorSearchFn(enhancedQuery)
+    const vectorSearchTime = Date.now() - searchStart
+    
+    // Response formatting
+    const formatStart = Date.now()
+    const contextContent = vectorResults
+      .map(result => result.data || result.text || result.content || result.metadata?.content)
+      .filter(Boolean)
+      .join('\n\n')
+    
+    const formattedResponse = await formatForInterview(contextContent, question, detectedInterviewType)
+    const responseFormattingTime = Date.now() - formatStart
+    
+    const totalTime = Date.now() - startTime
+    
+    const enhanced = {
+      response: formattedResponse,
+      metrics: {
+        queryEnhancementTime,
+        vectorSearchTime,
+        responseFormattingTime,
+        totalTime,
+        tokensUsed: 0,
+        enhancedQuery
+      }
+    }
     
     // Build sources from the enhanced results
     const sources = [
@@ -543,7 +578,7 @@ async function queryDigitalTwinEnhanced(question: string): Promise<DigitalTwinRe
       queryTime: enhanced.metrics.totalTime,
       cached: false,
       enhanced: true,
-      interviewType,
+      interviewType: detectedInterviewType,
       metrics: {
         queryEnhancementTime: enhanced.metrics.queryEnhancementTime,
         vectorSearchTime: enhanced.metrics.vectorSearchTime,

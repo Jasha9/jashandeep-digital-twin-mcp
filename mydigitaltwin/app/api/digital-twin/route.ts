@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { queryDigitalTwin, testConnection, getSampleQuestions } from '../../../lib/digital-twin-actions'
+import { queryDigitalTwin, testConnection, getSampleQuestions, compareRAGApproaches, getPerformanceStats } from '../../../lib/digital-twin-actions'
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -15,10 +15,14 @@ export async function GET(request: NextRequest) {
         const questions = await getSampleQuestions()
         return NextResponse.json({ success: true, questions })
       
+      case 'performance':
+        const stats = await getPerformanceStats()
+        return NextResponse.json({ success: true, stats })
+      
       default:
         return NextResponse.json({ 
           success: false, 
-          error: 'Invalid action. Use ?action=test or ?action=samples' 
+          error: 'Invalid action. Use ?action=test, ?action=samples, or ?action=performance' 
         }, { status: 400 })
     }
   } catch (error) {
@@ -33,7 +37,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { question } = body
+    const { question, useEnhanced = true, compare = false } = body
 
     if (!question || typeof question !== 'string') {
       return NextResponse.json({
@@ -42,7 +46,14 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const result = await queryDigitalTwin(question)
+    // Handle comparison request
+    if (compare) {
+      const comparison = await compareRAGApproaches(question)
+      return NextResponse.json(comparison)
+    }
+
+    // Handle regular query with enhanced/basic toggle
+    const result = await queryDigitalTwin(question, useEnhanced)
     return NextResponse.json(result)
     
   } catch (error) {

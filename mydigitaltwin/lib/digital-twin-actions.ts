@@ -85,6 +85,159 @@ try {
   throw error
 }
 
+// Enhanced RAG functionality
+function isEnhancedRAGAvailable(): boolean {
+  return !!process.env.GROQ_API_KEY
+}
+
+function detectInterviewType(query: string): InterviewType {
+  const lowerQuery = query.toLowerCase()
+  
+  const technicalKeywords = [
+    'code', 'programming', 'algorithm', 'architecture', 'framework', 'database',
+    'api', 'system design', 'performance', 'debugging', 'testing', 'deployment',
+    'technology', 'implementation', 'technical', 'development', 'engineering',
+    'python', 'ai', 'react', 'node.js', 'javascript', 'typescript'
+  ]
+  
+  const behavioralKeywords = [
+    'team', 'leadership', 'challenge', 'conflict', 'project', 'communication',
+    'time management', 'problem solving', 'collaboration', 'mentor', 'feedback',
+    'difficult', 'success', 'failure', 'learn', 'growth', 'experience',
+    'describe a', 'tell me about a time', 'give me an example'
+  ]
+  
+  const executiveKeywords = [
+    'strategy', 'vision', 'business', 'organization', 'transformation', 'innovation',
+    'leadership', 'influence', 'decision', 'stakeholder', 'executive', 'management',
+    'strategic'
+  ]
+  
+  const technicalScore = technicalKeywords.filter(keyword => lowerQuery.includes(keyword)).length
+  const behavioralScore = behavioralKeywords.filter(keyword => lowerQuery.includes(keyword)).length
+  const executiveScore = executiveKeywords.filter(keyword => lowerQuery.includes(keyword)).length
+  
+  if (executiveScore >= 2 || lowerQuery.includes('strategic') || lowerQuery.includes('vision')) {
+    return 'executive_interview'
+  } else if (technicalScore >= 2) {
+    return 'technical_interview'
+  } else if (behavioralScore >= 2) {
+    return 'behavioral_interview'
+  }
+  
+  return 'general_interview'
+}
+
+async function enhanceQuery(originalQuery: string, interviewType: InterviewType): Promise<string> {
+  try {
+    const enhancementPrompts = {
+      technical_interview: `Enhance this technical query for better RAG retrieval. Focus on:
+- Specific technologies, frameworks, and tools
+- Implementation details and methodologies  
+- Problem-solving approaches and architectural decisions
+Return only the enhanced query, no explanation.`,
+      behavioral_interview: `Enhance this behavioral query for comprehensive context retrieval. Focus on:
+- Specific situations, challenges, and outcomes
+- Leadership and collaboration experiences
+- Professional growth and learning moments
+Return only the enhanced query, no explanation.`,
+      executive_interview: `Enhance this executive-level query for strategic context retrieval. Focus on:
+- Strategic thinking and vision
+- Leadership impact and organizational influence
+- Business outcomes and value creation
+Return only the enhanced query, no explanation.`,
+      general_interview: `Enhance this general query for comprehensive professional context retrieval. Focus on:
+- Professional experiences and achievements
+- Skills and competencies demonstration
+- Career progression and growth
+Return only the enhanced query, no explanation.`
+    }
+
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.1-8b-instant",
+      messages: [
+        {
+          role: "system",
+          content: enhancementPrompts[interviewType]
+        },
+        {
+          role: "user",
+          content: `Original query: ${originalQuery}`
+        }
+      ],
+      temperature: 0.3,
+      max_tokens: 150,
+    })
+
+    const enhancedQuery = completion.choices[0]?.message?.content?.trim()
+    return enhancedQuery || originalQuery
+
+  } catch (error) {
+    console.warn('Query enhancement failed, using original:', error)
+    return originalQuery
+  }
+}
+
+async function formatForInterview(content: string, originalQuery: string, interviewType: InterviewType): Promise<string> {
+  try {
+    const formattingPrompts = {
+      technical_interview: `Format this technical response for an interview setting:
+- Lead with specific technologies and quantifiable results
+- Include concrete examples with implementation details
+- Highlight problem-solving methodology
+- End with technical insights or lessons learned
+Keep it concise (100-150 words) and demonstrate deep technical competency.`,
+      behavioral_interview: `Format this behavioral response using STAR methodology:
+Situation: Brief context setting
+Task: Clear objective or challenge
+Action: Specific steps taken with personal accountability
+Result: Quantifiable outcome and impact
+Include emotional intelligence insights and lessons learned. Keep to 120-180 words.`,
+      executive_interview: `Format this executive response with strategic focus:
+- Open with business impact and measurable outcomes
+- Demonstrate strategic thinking and vision
+- Highlight leadership influence and team development
+- Include innovation and process improvement
+Keep it authoritative yet approachable (150-200 words).`,
+      general_interview: `Format this general response for interview effectiveness:
+- Start with your strongest, most relevant point
+- Include specific examples with measurable outcomes
+- Demonstrate growth mindset and continuous learning
+Keep it engaging and authentic (100-140 words).`
+    }
+
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.1-8b-instant",
+      messages: [
+        {
+          role: "system",
+          content: `${formattingPrompts[interviewType]}
+
+You are Jashandeep Kaur responding in an interview. Use first person and be authentic.
+Base your response on the provided content, but format it professionally for interview success.`
+        },
+        {
+          role: "user",
+          content: `Question: ${originalQuery}
+
+Available Information: ${content}
+
+Create an interview-ready response based on this information.`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 400,
+    })
+
+    const formattedResponse = completion.choices[0]?.message?.content?.trim()
+    return formattedResponse || content
+
+  } catch (error) {
+    console.warn('Response formatting failed, using original content:', error)
+    return content
+  }
+}
+
 export interface QueryResult {
   id: string
   score: number
@@ -98,6 +251,8 @@ export interface QueryResult {
   }
 }
 
+type InterviewType = 'technical_interview' | 'behavioral_interview' | 'executive_interview' | 'general_interview'
+
 export interface DigitalTwinResponse {
   success: boolean
   answer?: string
@@ -108,6 +263,16 @@ export interface DigitalTwinResponse {
   }>
   queryTime?: number
   cached?: boolean
+  enhanced?: boolean
+  interviewType?: InterviewType
+  metrics?: {
+    queryEnhancementTime: number
+    vectorSearchTime: number
+    responseFormattingTime: number
+    totalTime: number
+    tokensUsed: number
+    enhancedQuery: string
+  }
 }
 
 export interface ConnectionTestResult {
@@ -275,11 +440,140 @@ Remember: People want to understand who you really are, not just your qualificat
 }
 
 /**
- * Query the digital twin using RAG (Retrieval-Augmented Generation)
+ * Query the digital twin using Enhanced RAG with LLM optimization
+ * Falls back to basic RAG if enhanced features are unavailable
+ */
+export async function queryDigitalTwin(question: string, useEnhanced: boolean = true): Promise<DigitalTwinResponse> {
+  const startTime = Date.now()
+  
+  try {
+    console.log(`QUERY: Processing question: "${question}"`)
+    
+    // Input validation and sanitization
+    const sanitizedQuestion = sanitizeInput(question)
+    
+    // Check cache first
+    const cacheKey = getCacheKey(sanitizedQuestion)
+    const cachedResult = getCache(cacheKey)
+    if (cachedResult) {
+      console.log('CACHE: Returning cached response')
+      return { ...cachedResult, cached: true }
+    }
+    
+    // Try enhanced RAG if available and requested
+    if (useEnhanced && isEnhancedRAGAvailable()) {
+      try {
+        return await queryDigitalTwinEnhanced(sanitizedQuestion)
+      } catch (error) {
+        console.warn('Enhanced RAG failed, falling back to basic:', error)
+        return await queryDigitalTwinBasic(sanitizedQuestion)
+      }
+    } else {
+      return await queryDigitalTwinBasic(sanitizedQuestion)
+    }
+    
+  } catch (error) {
+    console.error('ERROR: Query failed:', error)
+    
+    const errorResponse: DigitalTwinResponse = {
+      success: false,
+      error: error instanceof DigitalTwinError ? error.message : 'Unknown error occurred',
+      queryTime: Date.now() - startTime,
+      enhanced: false
+    }
+    
+    performance.record('queryDigitalTwin_error', Date.now() - startTime)
+    return errorResponse
+  }
+}
+
+/**
+ * Enhanced RAG query using LLM-powered optimization
+ */
+async function queryDigitalTwinEnhanced(question: string): Promise<DigitalTwinResponse> {
+  const startTime = Date.now()
+  
+  try {
+    console.log('ENHANCED: Using LLM-enhanced RAG pipeline')
+    
+    const interviewType = detectInterviewType(question)
+    console.log(`ENHANCED: Detected interview type: ${interviewType}`)
+    
+    // Create vector search function for the enhanced pipeline
+    const vectorSearchFn = async (enhancedQuery: string) => {
+      const vectorStartTime = Date.now()
+      const results = await queryVectorWithRetry(enhancedQuery, 3)
+      const vectorTime = Date.now() - vectorStartTime
+      
+      // Filter for digital twin data
+      const digitalTwinResults = results.filter((result: any) => {
+        const hasValidId = result.id && String(result.id).startsWith('dt-')
+        const hasContent = result.metadata?.content || result.metadata?.title
+        return hasValidId && hasContent
+      })
+      
+      console.log(`ENHANCED: Vector search found ${digitalTwinResults.length} relevant documents (${vectorTime}ms)`)
+      
+      if (digitalTwinResults.length === 0) {
+        throw new Error('No digital twin data found for enhanced query')
+      }
+      
+      return digitalTwinResults.map((result: any) => ({
+        ...result,
+        data: result.metadata?.content || result.metadata?.title || '',
+        metadata: {
+          ...result.metadata,
+          content: result.metadata?.content || result.metadata?.title || ''
+        }
+      }))
+    }
+    
+    // Use the enhanced RAG pipeline
+    const enhanced = await monitoredRAGQuery(question, vectorSearchFn)
+    
+    // Build sources from the enhanced results
+    const sources = [
+      { title: 'Enhanced Digital Twin Response', relevance: 1.0 }
+    ]
+    
+    const response: DigitalTwinResponse = {
+      success: true,
+      answer: enhanced.response,
+      sources,
+      queryTime: enhanced.metrics.totalTime,
+      cached: false,
+      enhanced: true,
+      interviewType,
+      metrics: {
+        queryEnhancementTime: enhanced.metrics.queryEnhancementTime,
+        vectorSearchTime: enhanced.metrics.vectorSearchTime,
+        responseFormattingTime: enhanced.metrics.responseFormattingTime,
+        totalTime: enhanced.metrics.totalTime,
+        tokensUsed: enhanced.metrics.tokensUsed,
+        enhancedQuery: enhanced.metrics.enhancedQuery
+      }
+    }
+    
+    // Cache successful response
+    const cacheKey = getCacheKey(question)
+    setCache(cacheKey, response)
+    performance.record('queryDigitalTwin_enhanced', enhanced.metrics.totalTime)
+    
+    console.log(`ENHANCED: Query completed successfully in ${enhanced.metrics.totalTime}ms`)
+    return response
+    
+  } catch (error) {
+    console.error('ENHANCED: Enhanced RAG failed:', error)
+    throw error
+  }
+}
+
+/**
+ * Basic RAG query (original implementation)
  * This function searches the vector database for relevant information
  * and generates a personalized response using AI
  */
-export async function queryDigitalTwin(question: string): Promise<DigitalTwinResponse> {
+async function queryDigitalTwinBasic(question: string): Promise<DigitalTwinResponse> {
   const startTime = Date.now()
   
   try {
@@ -390,13 +684,14 @@ Provide a punchy, interview-ready response that showcases your qualifications:`
       answer,
       sources,
       queryTime: Date.now() - startTime,
-      cached: false
+      cached: false,
+      enhanced: false
     }
     
     setCache(cacheKey, response)
-    performance.record('queryDigitalTwin', Date.now() - startTime)
+    performance.record('queryDigitalTwin_basic', Date.now() - startTime)
 
-    console.log(`SUCCESS: Query completed in ${response.queryTime}ms`)
+    console.log(`BASIC: Query completed in ${response.queryTime}ms`)
     return response
 
   } catch (error) {
@@ -490,18 +785,102 @@ export async function testConnection(): Promise<ConnectionTestResult> {
 }
 
 /**
- * Get sample questions for the digital twin
+ * Compare enhanced vs basic RAG approaches for A/B testing
  */
-export async function getSampleQuestions(): Promise<string[]> {
+export async function compareRAGApproaches(question: string): Promise<any> {
+  const startTime = Date.now()
+  
+  try {
+    console.log(`COMPARE: Running A/B test for: "${question}"`)
+    
+    // Run both approaches in parallel
+    const [basicResult, enhancedResult] = await Promise.all([
+      queryDigitalTwin(question, false), // Basic RAG
+      queryDigitalTwin(question, true)   // Enhanced RAG
+    ])
+    
+    const endTime = Date.now()
+    
+    const comparison = {
+      question,
+      results: {
+        basic: {
+          response: basicResult.answer,
+          processingTime: basicResult.queryTime,
+          success: basicResult.success,
+          enhanced: false
+        },
+        enhanced: {
+          response: enhancedResult.answer,
+          processingTime: enhancedResult.queryTime,
+          success: enhancedResult.success,
+          enhanced: true,
+          interviewType: enhancedResult.interviewType,
+          metrics: enhancedResult.metrics
+        }
+      },
+      performance: {
+        timeDifference: (enhancedResult.queryTime || 0) - (basicResult.queryTime || 0),
+        totalComparisonTime: endTime - startTime,
+        enhancementOverhead: enhancedResult.metrics ? 
+          enhancedResult.metrics.queryEnhancementTime + enhancedResult.metrics.responseFormattingTime : 0
+      },
+      timestamp: new Date().toISOString()
+    }
+    
+    console.log(`COMPARE: Completed A/B test in ${comparison.performance.totalComparisonTime}ms`)
+    console.log(`COMPARE: Enhancement overhead: ${comparison.performance.enhancementOverhead}ms`)
+    
+    performance.record('ragComparison', comparison.performance.totalComparisonTime)
+    
+    return comparison
+    
+  } catch (error) {
+    console.error('COMPARE: RAG comparison failed:', error)
+    return {
+      error: 'Failed to compare RAG approaches',
+      question,
+      timestamp: new Date().toISOString(),
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }
+  }
+}
+
+/**
+ * Get performance statistics for the digital twin system
+ */
+export async function getPerformanceStats(): Promise<any> {
+  return {
+    operations: {
+      enhanced: performance.getStats('queryDigitalTwin_enhanced'),
+      basic: performance.getStats('queryDigitalTwin_basic'),
+      comparison: performance.getStats('ragComparison'),
+      connectionTest: performance.getStats('connectionTest'),
+      errors: performance.getStats('queryDigitalTwin_error')
+    },
+    systemInfo: {
+      enhancedRAGAvailable: isEnhancedRAGAvailable(),
+      cacheSize: cache.size,
+      timestamp: new Date().toISOString()
+    }
+  }
+}
+
+/**
+ * Get sample questions for the digital twin with interview type indicators
+ */
+export async function getSampleQuestions(): Promise<Array<{question: string, type: InterviewType}>> {
   return [
-    "Tell me about your work experience",
-    "What are your technical skills?",
-    "Describe your career goals",
-    "What projects have you worked on?",
-    "What's your educational background?",
-    "What makes you unique as a developer?",
-    "How do you balance multiple responsibilities?",
-    "What technologies do you specialize in?"
+    { question: "Tell me about your work experience", type: "general_interview" },
+    { question: "What are your technical skills in Python and AI?", type: "technical_interview" },
+    { question: "Describe a challenging project and how you overcame obstacles", type: "behavioral_interview" },
+    { question: "What projects have you worked on recently?", type: "general_interview" },
+    { question: "How do you approach system design and architecture?", type: "technical_interview" },
+    { question: "Tell me about a time you had to mentor someone", type: "behavioral_interview" },
+    { question: "What's your vision for AI in education?", type: "executive_interview" },
+    { question: "How do you balance multiple responsibilities?", type: "behavioral_interview" },
+    { question: "Explain your experience with RAG systems and vector databases", type: "technical_interview" },
+    { question: "What makes you unique as a developer?", type: "general_interview" }
   ]
 }
 

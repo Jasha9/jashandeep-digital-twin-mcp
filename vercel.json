@@ -12,13 +12,7 @@
       "memory": 512
     }
   },
-  "env": {
-    "VERCEL_AI_GATEWAY_URL": "@vercel-ai-gateway-url",
-    "OPENAI_API_KEY": "@openai-api-key",
-    "GROQ_API_KEY": "@groq-api-key",
-    "UPSTASH_VECTOR_REST_URL": "@upstash-vector-url",
-    "UPSTASH_VECTOR_REST_TOKEN": "@upstash-vector-token"
-  },
+
   "build": {
     "env": {
       "NEXT_TELEMETRY_DISABLED": "1"

@@ -2,6 +2,10 @@
 
 import { Index } from "@upstash/vector"
 import Groq from "groq-sdk"
+import { AnalyticsEngine } from './analytics/engine'
+import { SemanticCache } from './analytics/semantic-cache'
+import { RealTimeMonitor } from './analytics/real-time-monitor'
+import { groqTracker, GroqErrorHandler, GroqErrorType } from './groq-tracker'
 
 // Performance monitoring and logging
 const performance = {
@@ -123,7 +127,23 @@ export interface ConnectionTestResult {
 
 // Simple cache implementation
 const cache = new Map<string, { data: any; timestamp: number }>()
-const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+const CACHE_TTL = 15 * 60 * 1000 // 15 minutes
+
+// Analytics engine, semantic cache, and real-time monitor
+const analytics = typeof window !== 'undefined' ? AnalyticsEngine.getInstance() : null
+const semanticCache = typeof window !== 'undefined' ? SemanticCache.getInstance() : null
+const monitor = typeof window !== 'undefined' ? RealTimeMonitor.getInstance() : null
+
+// Session management
+function getSessionId(): string {
+  if (typeof window === 'undefined') return 'server-session'
+  let sessionId = sessionStorage.getItem('dt-session-id')
+  if (!sessionId) {
+    sessionId = Date.now().toString(36) + Math.random().toString(36).substr(2)
+    sessionStorage.setItem('dt-session-id', sessionId)
+  }
+  return sessionId
+}
 
 function getCacheKey(question: string): string {
   return Buffer.from(question.toLowerCase().trim()).toString('base64')
@@ -147,6 +167,71 @@ function setCache(key: string, data: any): void {
       cache.delete(oldestKey)
     }
   }
+}
+
+// Relevance checker for out-of-scope questions
+function checkQuestionRelevance(question: string): { isRelevant: boolean, suggestedResponse?: string } {
+  const lowerQuestion = question.toLowerCase()
+  
+  // Define irrelevant topic keywords
+  const irrelevantKeywords = [
+    'cooking', 'recipe', 'food', 'restaurant', 'cuisine',
+    'sports', 'football', 'basketball', 'cricket', 'tennis', 'soccer',
+    'music', 'song', 'band', 'concert', 'musician',
+    'travel', 'vacation', 'holiday', 'tourism', 'flight',
+    'movie', 'film', 'actor', 'actress', 'cinema',
+    'weather', 'climate', 'temperature',
+    'politics', 'government', 'election', 'politician',
+    'medical', 'health', 'doctor', 'medicine', 'hospital',
+    'fashion', 'clothing', 'shopping', 'brand',
+    'relationship', 'dating', 'marriage', 'family personal',
+    'religion', 'spiritual', 'god', 'church'
+  ]
+  
+  // Check if question contains irrelevant keywords
+  const hasIrrelevantKeywords = irrelevantKeywords.some(keyword => 
+    lowerQuestion.includes(keyword)
+  )
+  
+  // Define relevant professional/academic keywords
+  const relevantKeywords = [
+    'education', 'university', 'degree', 'gpa', 'grade', 'academic', 'study',
+    'programming', 'coding', 'software', 'development', 'tech', 'technical',
+    'ai', 'artificial intelligence', 'machine learning', 'ml', 'data',
+    'internship', 'work', 'experience', 'job', 'career', 'professional',
+    'project', 'skill', 'technology', 'computer', 'python', 'javascript',
+    'react', 'next.js', 'database', 'web', 'full stack', 'digital twin',
+    'rag', 'vector', 'groq', 'mentoring', 'teaching', 'student'
+  ]
+  
+  const hasRelevantKeywords = relevantKeywords.some(keyword => 
+    lowerQuestion.includes(keyword)
+  )
+  
+  // If clearly irrelevant and no relevant keywords
+  if (hasIrrelevantKeywords && !hasRelevantKeywords) {
+    // Generate context-appropriate redirect based on question type
+    let redirectResponse = "That's not something I have experience with or information about in my professional background."
+    
+    if (lowerQuestion.includes('cook') || lowerQuestion.includes('food') || lowerQuestion.includes('recipe')) {
+      redirectResponse += " While I don't cook much due to my busy schedule with studies and multiple internships, I'd be happy to discuss my technical 'recipes' - like building enterprise AI systems or achieving a 6.17 GPA through effective study strategies!"
+    } else if (lowerQuestion.includes('sport') || lowerQuestion.includes('game')) {
+      redirectResponse += " I'm more focused on the 'game' of software development and AI innovation. I'd love to share how I'm 'competing' in the tech field with my 96/100 performance in Data Analytics or my work on enterprise digital twin systems!"
+    } else if (lowerQuestion.includes('travel') || lowerQuestion.includes('vacation')) {
+      redirectResponse += " My main 'journey' right now is through the world of AI and software development. I'd be excited to take you on a tour of my technical projects, academic achievements (6.17 GPA), or my experience building production AI systems!"
+    } else {
+      redirectResponse += " However, I'd be happy to discuss my expertise in AI/ML development, full-stack programming, my academic achievements (6.17 GPA at Victoria University), or my experience as an AI Builder Intern developing enterprise digital twin systems."
+    }
+    
+    redirectResponse += " Is there something specific about my technical skills, educational background, or professional experience you'd like to know more about?"
+    
+    return {
+      isRelevant: false,
+      suggestedResponse: redirectResponse
+    }
+  }
+  
+  return { isRelevant: true }
 }
 
 // Input sanitization
@@ -177,6 +262,7 @@ async function queryVectorWithRetry(question: string, maxRetries: number = 3): P
         data: question,
         topK: 3,
         includeMetadata: true,
+        filter: "namespace = 'dt'"
       })
       
       console.log(`SEARCH: Found ${results?.length || 0} results`)
@@ -198,12 +284,28 @@ async function queryVectorWithRetry(question: string, maxRetries: number = 3): P
   return []
 }
 
-// Generate AI response with retry logic
+// Generate AI response with intelligent retry logic and usage tracking
 async function generateAIResponseWithRetry(prompt: string, maxRetries: number = 3): Promise<string> {
-  const models = ["llama-3.1-8b-instant", "llama-3.1-70b-versatile", "mixtral-8x7b-32768"]
+  // Check rate limits before proceeding
+  const rateLimitCheck = await groqTracker.checkRateLimits()
+  if (!rateLimitCheck.allowed) {
+    throw new DigitalTwinError(
+      `Rate limit exceeded: ${rateLimitCheck.reason}`,
+      'RATE_LIMIT_EXCEEDED'
+    )
+  }
+
+  // Intelligent model selection based on performance history
+  const bestModel = groqTracker.getBestPerformingModel()
+  const models = [bestModel, "llama-3.1-8b-instant", "llama-3.1-70b-versatile", "mixtral-8x7b-32768"]
+    .filter((model, index, arr) => arr.indexOf(model) === index) // Remove duplicates
   
   for (const model of models) {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      const startTime = Date.now()
+      let success = false
+      let tokensUsed = 0
+      
       try {
         console.log(`AI: Generating response with ${model} (attempt ${attempt}/${maxRetries})`)
         
@@ -212,61 +314,111 @@ async function generateAIResponseWithRetry(prompt: string, maxRetries: number = 
           messages: [
             {
               role: "system",
-              content: `You are Jashandeep Kaur's AI digital twin. Answer questions authentically in first person as if you are Jashandeep herself, sharing your real experiences and perspectives.
+              content: `You are Jashandeep Kaur's AI digital twin. Answer authentically as Jashandeep in first person using the optimized context provided.
 
-RESPONSE STYLE:
-- Be conversational and genuine, not robotic or overly formal
-- Share specific stories and examples rather than generic statements
-- Show personality - mention real challenges, learning moments, and honest insights
-- Use "I" statements and speak from personal experience
-- Be humble about areas for growth while confident about your strengths
+🎯 KEY ACHIEVEMENTS TO HIGHLIGHT:
+- Victoria University Final Year Student with 6.17/7.0 GPA (Outstanding Performance)
+- HIGH DISTINCTION in 6 subjects including 96/100 in Data Analytics for Cyber Security
+- Mobile Application Development: 83/100
+- AI Builder Intern at ausbiz Consulting developing enterprise digital twins
+- 100+ students mentored at Victoria University
 
-FOR BEHAVIORAL QUESTIONS:
-- Start with real stories from your experience
-- Include specific details (names, timeframes, outcomes)
-- Show emotional intelligence and self-awareness
-- Explain your thought process and what you learned
-- Connect experiences to broader lessons
+⚡ OPTIMIZED 3-SOURCE SYSTEM GUIDELINES:
+- Use ALL relevant information from the 3 optimized context sources
+- ALWAYS mention 6.17 GPA and 96/100 achievement for education questions
+- Emphasize High Distinction performance and academic excellence
+- Highlight rapid learning through VU's 4-week block system
+- NEVER make up information not in the provided context
+- Do NOT mention: University of Edinburgh, Masters degrees, or unverified institutions
 
-FOR TECHNICAL QUESTIONS:
-- Reference your actual projects (Food RAG Explorer, digital twin work, etc.)
-- Mention specific technologies you've used in context
-- Explain your learning process and problem-solving approach
-- Be honest about what you know vs. what you're learning
+📚 EDUCATION FOCUS (Prioritize these details):
+- Bachelor of Information Technology at Victoria University (VU), graduating June 2026
+- GPA: 6.17/7.0 with High Distinction in 6 subjects
+- Exceptional performance: 96/100 in Data Analytics for Cyber Security
+- Strong performance: 83/100 in Mobile Application Development
+- Rapid learning abilities through intensive 4-week block model
 
-EXAMPLES OF AUTHENTIC RESPONSES:
-- Instead of "I have strong time management skills" → Tell the story about balancing internship, mentoring, hotel work, and studies
-- Instead of "I'm good at mentoring" → Share the specific story about the student who struggled with the LMS
-- Instead of "I can learn quickly" → Describe the actual experience of the 10-week intensive programs
+💼 PROFESSIONAL EXPERIENCE:
+- Current: AI Builder Intern at ausbiz Consulting (enterprise digital twins)
+- Previous: Full Stack Developer Intern at ausbiz Consulting
+- Mentoring: 100+ students at Victoria University
+- Customer service: Hotel receptionist role
 
-Remember: People want to understand who you really are, not just your qualifications. Show your authentic self through real experiences and genuine reflections.`
+🚫 OUT-OF-SCOPE QUESTIONS HANDLING:
+If asked about topics not covered in your context (sports, cooking, travel, unrelated industries, personal life beyond professional/academic, etc.), respond professionally:
+
+"That's not something I have experience with or information about in my professional background. However, I'd be happy to discuss my expertise in [mention relevant area from context - AI/ML development, full-stack programming, academic achievements, mentoring, digital twin systems, etc.]. Is there something specific about my technical skills, educational background, or professional experience you'd like to know more about?"
+
+For education questions, be comprehensive (150-200 words) highlighting academic excellence. For other topics, be concise but redirect to relevant expertise when appropriate.`
             },
             {
               role: "user", 
               content: prompt
             }
           ],
-          temperature: 0.7,
-          max_tokens: 500,
+          temperature: 0.3,
+          max_tokens: 300,
         })
+        
+        // Extract usage statistics
+        tokensUsed = (completion.usage?.prompt_tokens || 0) + (completion.usage?.completion_tokens || 0)
+        success = true
         
         const answer = completion.choices[0]?.message?.content?.trim()
         if (answer) {
           console.log(`AI: Response generated successfully with ${model}`)
+          
+          // Track successful request
+          groqTracker.trackRequest(
+            model,
+            completion.usage?.prompt_tokens || 0,
+            completion.usage?.completion_tokens || 0,
+            Date.now() - startTime,
+            true
+          )
+          
           return answer
         }
         
       } catch (error) {
-        console.warn(`AI generation attempt ${attempt} with ${model} failed:`, error)
+        const errorType = GroqErrorHandler.classifyError(error)
+        const responseTime = Date.now() - startTime
+        
+        console.warn(`AI generation attempt ${attempt} with ${model} failed:`, {
+          error: error.message,
+          type: errorType,
+          responseTime
+        })
+        
+        // Track failed request
+        groqTracker.trackRequest(
+          model,
+          0,
+          0,
+          responseTime,
+          false
+        )
+        
+        // Check if we should retry
+        if (!GroqErrorHandler.shouldRetry(errorType, attempt, maxRetries)) {
+          console.log(`AI: Not retrying ${model} due to error type: ${errorType}`)
+          break
+        }
+        
         if (attempt === maxRetries && model === models[models.length - 1]) {
           throw new DigitalTwinError(
-            'AI response generation failed with all models',
+            `AI response generation failed with all models. Last error: ${error.message}`,
             'AI_GENERATION_FAILED',
-            { originalError: error }
+            { originalError: error, errorType }
           )
         }
-        // Small delay before retry
-        await new Promise(resolve => setTimeout(resolve, 500 * attempt))
+        
+        // Intelligent backoff based on error type
+        const backoffTime = GroqErrorHandler.getBackoffTime(errorType, attempt)
+        if (backoffTime > 0) {
+          console.log(`AI: Waiting ${backoffTime}ms before retry`)
+          await new Promise(resolve => setTimeout(resolve, backoffTime))
+        }
       }
     }
   }
@@ -281,25 +433,77 @@ Remember: People want to understand who you really are, not just your qualificat
  */
 export async function queryDigitalTwin(question: string): Promise<DigitalTwinResponse> {
   const startTime = Date.now()
+  const sessionId = getSessionId()
+  let vectorSearchTime = 0
+  let aiGenerationTime = 0
+  let cacheHit = false
+  
+  // Input validation and sanitization
+  const sanitizedQuestion = sanitizeInput(question)
+  
+  // Check question relevance before processing
+  const relevanceCheck = checkQuestionRelevance(sanitizedQuestion)
+  if (!relevanceCheck.isRelevant && relevanceCheck.suggestedResponse) {
+    console.log(`RELEVANCE: Question deemed out-of-scope, providing redirect response`)
+    return {
+      success: true,
+      answer: relevanceCheck.suggestedResponse,
+      sources: [],
+      queryTime: Date.now() - startTime,
+      cached: false
+    }
+  }
   
   try {
-    console.log(`QUERY: Processing question: "${question}"`)
+    console.log(`QUERY: Processing relevant question: "${question}"`)
     
-    // Input validation and sanitization
-    const sanitizedQuestion = sanitizeInput(question)
+    // Check semantic cache first
+    let semanticCacheResult = null
+    if (semanticCache) {
+      semanticCacheResult = semanticCache.get(sanitizedQuestion)
+    }
     
-    // Check cache first
+    // Fallback to simple cache if semantic cache missed
     const cacheKey = getCacheKey(sanitizedQuestion)
-    const cachedResult = getCache(cacheKey)
+    const cachedResult = semanticCacheResult?.cacheHit ? semanticCacheResult.entry?.response : getCache(cacheKey)
+    
     if (cachedResult) {
-      console.log('CACHE: Returning cached response')
-      return { ...cachedResult, cached: true }
+      console.log(`CACHE: Returning ${semanticCacheResult?.cacheHit ? 'semantic' : 'simple'} cached response`)
+      if (semanticCacheResult?.similarity) {
+        console.log(`CACHE: Similarity - ${semanticCacheResult.similarity.method}: ${(semanticCacheResult.similarity.score * 100).toFixed(1)}%`)
+      }
+      cacheHit = true
+      
+      // Track analytics for cached response
+      if (analytics) {
+        await analytics.trackQuery({
+          question: sanitizedQuestion,
+          responseTime: Date.now() - startTime,
+          quality: semanticCacheResult?.entry?.metadata?.quality || 0.9,
+          cacheHit: true,
+          vectorSearchTime: 0,
+          aiGenerationTime: 0,
+          vectorResults: [],
+          sessionId,
+          modelUsed: semanticCacheResult?.cacheHit ? 'semantic-cache' : 'cache',
+          success: true
+        })
+      }
+
+      // Record real-time metrics
+      if (monitor) {
+        monitor.recordMetric('response_time', Date.now() - startTime)
+        monitor.recordMetric('cache_hit', 1)
+        monitor.recordMetric('query_volume', 1)
+      }
+      
+      return { ...cachedResult, cached: true, queryTime: Date.now() - startTime }
     }
     
     // Step 1: Query Upstash Vector with retry logic
     const vectorStartTime = Date.now()
     const searchResults = await queryVectorWithRetry(sanitizedQuestion)
-    const vectorQueryTime = Date.now() - vectorStartTime
+    vectorSearchTime = Date.now() - vectorStartTime
 
     if (!searchResults || searchResults.length === 0) {
       const errorResponse: DigitalTwinResponse = {
@@ -354,27 +558,30 @@ export async function queryDigitalTwin(question: string): Promise<DigitalTwinRes
 
     // Step 4: Generate AI response using Groq with retry logic
     const context = contextChunks.join('\n\n')
-    const prompt = `Based on the following information about yourself, answer the question authentically and professionally as Jashandeep in an interview setting.
+    const isEducationQuestion = /education|degree|university|study|qualification|certification|learning|academic|skill|expertise|blockstar/i.test(sanitizedQuestion)
+    
+    const prompt = `Answer using ALL relevant information from the context below. Provide comprehensive responses for education topics.
 
-Your Information:
+CONTEXT FROM JASHANDEEP'S PROFILE:
 ${context}
 
-Question: ${sanitizedQuestion}
+QUESTION: ${sanitizedQuestion}
 
-INTERVIEW RESPONSE GUIDELINES:
-- Keep responses concise (120-180 words for behavioral, 80-120 words for technical)
-- Use confident, professional tone appropriate for interviews
-- Lead with the most impactful points
-- Use STAR format for behavioral questions (brief Situation, Task, Action, Result)
-- Include specific technologies, numbers, and measurable outcomes
-- End with a key insight or lesson learned
-- Eliminate fluff and focus on demonstrating your value
+INSTRUCTIONS:
+- Answer as Jashandeep in first person
+- Use ALL relevant information from the context above
+${isEducationQuestion ? 
+  '- For education topics: Include degree, certifications, technical skills, achievements, and expertise areas\n- Be comprehensive (150-250 words) to fully showcase your educational background' :
+  '- Be concise (100-150 words) and interview-appropriate'
+}
+- If context lacks specific details, say "I don't have those specific details in my profile"
+- NEVER mention University of Edinburgh or Masters degrees
 
-Provide a punchy, interview-ready response that showcases your qualifications:`
+ANSWER:`
 
     const aiStartTime = Date.now()
     const answer = await generateAIResponseWithRetry(prompt)
-    const aiGenerationTime = Date.now() - aiStartTime
+    aiGenerationTime = Date.now() - aiStartTime
 
     if (!answer) {
       return {
@@ -393,8 +600,38 @@ Provide a punchy, interview-ready response that showcases your qualifications:`
       cached: false
     }
     
+    // Store in both caches
     setCache(cacheKey, response)
+    if (semanticCache) {
+      semanticCache.store(sanitizedQuestion, response, {
+        quality: calculateResponseQuality(answer, sources?.length || 0),
+        topics: extractQuestionTopics(sanitizedQuestion)
+      })
+    }
     performance.record('queryDigitalTwin', Date.now() - startTime)
+
+    // Track analytics
+    if (analytics) {
+      await analytics.trackQuery({
+        question: sanitizedQuestion,
+        responseTime: response.queryTime || 0,
+        quality: calculateResponseQuality(answer, sources?.length || 0),
+        cacheHit: false,
+        vectorSearchTime,
+        aiGenerationTime,
+        vectorResults: searchResults,
+        sessionId,
+        modelUsed: 'groq-ai',
+        success: true
+      })
+    }
+
+    // Record real-time metrics for successful query
+    if (monitor) {
+      monitor.recordMetric('response_time', response.queryTime || 0)
+      monitor.recordMetric('cache_miss', 1)
+      monitor.recordMetric('query_volume', 1)
+    }
 
     console.log(`SUCCESS: Query completed in ${response.queryTime}ms`)
     return response
@@ -409,8 +646,80 @@ Provide a punchy, interview-ready response that showcases your qualifications:`
     }
     
     performance.record('queryDigitalTwin_error', Date.now() - startTime)
+    
+    // Track analytics for errors
+    if (analytics) {
+      await analytics.trackQuery({
+        question: sanitizedQuestion || question,
+        responseTime: errorResponse.queryTime || 0,
+        quality: 0,
+        cacheHit: false,
+        vectorSearchTime,
+        aiGenerationTime,
+        vectorResults: [],
+        sessionId,
+        modelUsed: 'error',
+        success: false
+      })
+    }
+
+    // Record real-time metrics for errors
+    if (monitor) {
+      monitor.recordMetric('response_time', errorResponse.queryTime || 0)
+      monitor.recordMetric('error', 1)
+      monitor.recordMetric('query_volume', 1)
+    }
+    
     return errorResponse
   }
+}
+
+/**
+ * Extract topics from question for semantic caching
+ */
+function extractQuestionTopics(question: string): string[] {
+  const lowerQuestion = question.toLowerCase()
+  const topics: string[] = []
+  
+  const topicPatterns = {
+    'technical': ['programming', 'code', 'algorithm', 'database', 'api', 'framework', 'technology', 'software', 'development'],
+    'behavioral': ['leadership', 'teamwork', 'conflict', 'challenge', 'experience', 'project', 'management', 'communication'],
+    'company': ['culture', 'values', 'mission', 'goals', 'business', 'strategy', 'growth', 'organization'],
+    'career': ['career', 'growth', 'goals', 'future', 'development', 'skills', 'learning', 'advancement']
+  }
+  
+  for (const [category, keywords] of Object.entries(topicPatterns)) {
+    if (keywords.some(keyword => lowerQuestion.includes(keyword))) {
+      topics.push(category)
+    }
+  }
+  
+  return topics.length > 0 ? topics : ['general']
+}
+
+/**
+ * Calculate response quality based on answer length and sources
+ */
+function calculateResponseQuality(answer: string, sourceCount: number): number {
+  let quality = 0.5 // Base quality
+  
+  // Answer length scoring (optimal 100-200 words)
+  const wordCount = answer.split(' ').length
+  if (wordCount >= 50 && wordCount <= 250) {
+    quality += 0.3
+  } else if (wordCount >= 30) {
+    quality += 0.2
+  }
+  
+  // Source relevance scoring
+  if (sourceCount >= 2) {
+    quality += 0.2
+  } else if (sourceCount >= 1) {
+    quality += 0.1
+  }
+  
+  // Ensure quality is between 0 and 1
+  return Math.min(Math.max(quality, 0), 1)
 }
 
 /**
@@ -421,6 +730,11 @@ export async function testConnection(): Promise<ConnectionTestResult> {
   
   try {
     console.log('TEST: Starting comprehensive connection test...')
+    
+    // Track performance
+    if (analytics) {
+      await analytics.trackPerformance('connection_test', 0, true, { stage: 'start' })
+    }
     
     // Test 1: Upstash Vector database
     const vectorStartTime = Date.now()
@@ -464,12 +778,22 @@ export async function testConnection(): Promise<ConnectionTestResult> {
     const totalResponseTime = Date.now() - startTime
     performance.record('connectionTest', totalResponseTime)
     
-    return {
+    const result = {
       success: true,
       message: `Successfully connected to all services`,
       vectorCount,
       responseTime: totalResponseTime
     }
+    
+    // Track successful connection test
+    if (analytics) {
+      await analytics.trackPerformance('connection_test', totalResponseTime, true, { 
+        vectorCount,
+        message: result.message
+      })
+    }
+    
+    return result
     
   } catch (error) {
     const errorResponseTime = Date.now() - startTime
@@ -477,7 +801,7 @@ export async function testConnection(): Promise<ConnectionTestResult> {
     
     performance.record('connectionTest_error', errorResponseTime)
     
-    return {
+    const errorResult = {
       success: false,
       message: error instanceof Error ? error.message : 'Connection failed',
       responseTime: errorResponseTime,
@@ -486,6 +810,15 @@ export async function testConnection(): Promise<ConnectionTestResult> {
         details: error.details
       } : undefined
     }
+    
+    // Track failed connection test
+    if (analytics) {
+      await analytics.trackPerformance('connection_test', errorResponseTime, false, {
+        error: errorResult.message
+      }, errorResult.message)
+    }
+    
+    return errorResult
   }
 }
 

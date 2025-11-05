@@ -1,0 +1,59 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "framework": "nextjs",
+  "functions": {
+    "app/api/chat/route.ts": {
+      "maxDuration": 30,
+      "memory": 1024
+    },
+    "app/api/ai-gateway/analytics/route.ts": {
+      "maxDuration": 10,
+      "memory": 512
+    }
+  },
+  "env": {
+    "VERCEL_AI_GATEWAY_URL": "@vercel-ai-gateway-url",
+    "OPENAI_API_KEY": "@openai-api-key",
+    "GROQ_API_KEY": "@groq-api-key",
+    "UPSTASH_VECTOR_REST_URL": "@upstash-vector-url",
+    "UPSTASH_VECTOR_REST_TOKEN": "@upstash-vector-token"
+  },
+  "build": {
+    "env": {
+      "NEXT_TELEMETRY_DISABLED": "1"
+    }
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/ai-gateway/:path*",
+      "destination": "/api/ai-gateway/:path*"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/dashboard",
+      "destination": "/admin",
+      "permanent": false
+    }
+  ]
+}

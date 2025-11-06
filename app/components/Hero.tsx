@@ -28,9 +28,17 @@ export default function Hero() {
         <div className="mb-8 animate-fadeIn">
           <span className="text-5xl md:text-6xl mb-4 block">👋</span>
           <h2 className="text-2xl md:text-3xl text-blue-200 mb-2">Hi, I&apos;m</h2>
-          <h1 className="text-6xl md:text-8xl font-bold text-white mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400">
+          <h1 className="text-6xl md:text-8xl font-bold text-white mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400">
             {aboutData.name}
           </h1>
+          <div className="mb-6 animate-pulse">
+            <p className="text-2xl md:text-3xl font-bold text-purple-300 mb-2 flex items-center justify-center gap-3">
+              🤖 AI Digital Twin Available
+            </p>
+            <p className="text-lg text-blue-200">
+              Ask my AI assistant anything about my experience & skills!
+            </p>
+          </div>
         </div>
 
         {/* Animated Skills */}
@@ -54,13 +62,16 @@ export default function Hero() {
         </p>
 
         {/* Call to Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+        <div className="flex flex-col sm:flex-row gap-6 justify-center items-center">
           <button
             onClick={openChat}
-            className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-lg transition-all transform hover:scale-105 shadow-lg shadow-blue-500/50 flex items-center gap-2"
+            className="group px-12 py-6 bg-gradient-to-r from-purple-600 via-blue-600 to-purple-600 hover:from-purple-500 hover:via-blue-500 hover:to-purple-500 text-white font-bold text-xl rounded-2xl transition-all transform hover:scale-110 shadow-2xl shadow-purple-500/50 flex items-center gap-4 border-2 border-white/30 hover:border-white/50 animate-pulse"
           >
-            <span>Chat with My Digital Twin</span>
-            <span className="text-2xl">🤖</span>
+            <span className="text-4xl group-hover:animate-bounce">🤖</span>
+            <div className="text-left">
+              <div className="text-xl">Chat with My Digital Twin</div>
+              <div className="text-sm font-normal opacity-90">Instant AI-powered responses</div>
+            </div>
           </button>
           
           <Link
@@ -71,23 +82,23 @@ export default function Hero() {
           </Link>
         </div>
 
-        {/* Quick Stats */}
+        {/* Digital Twin Stats */}
         <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
+          <div className="bg-purple-600/20 backdrop-blur-sm rounded-lg p-4 border border-purple-400/30 hover:border-purple-400/60 transition-all">
+            <div className="text-3xl font-bold text-white mb-1">🤖 AI</div>
+            <div className="text-purple-200 text-sm">Digital Twin Ready</div>
+          </div>
+          <div className="bg-blue-600/20 backdrop-blur-sm rounded-lg p-4 border border-blue-400/30 hover:border-blue-400/60 transition-all">
+            <div className="text-3xl font-bold text-white mb-1">&lt;500ms</div>
+            <div className="text-blue-200 text-sm">AI Response Time</div>
+          </div>
+          <div className="bg-green-600/20 backdrop-blur-sm rounded-lg p-4 border border-green-400/30 hover:border-green-400/60 transition-all">
             <div className="text-3xl font-bold text-white mb-1">85%+</div>
-            <div className="text-blue-200 text-sm">Recruiter Satisfaction</div>
+            <div className="text-green-200 text-sm">Recruiter Satisfaction</div>
           </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-            <div className="text-3xl font-bold text-white mb-1">10+</div>
-            <div className="text-blue-200 text-sm">Projects Completed</div>
-          </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-            <div className="text-3xl font-bold text-white mb-1">50+</div>
-            <div className="text-blue-200 text-sm">Technologies</div>
-          </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20">
-            <div className="text-3xl font-bold text-white mb-1">99.9%</div>
-            <div className="text-blue-200 text-sm">System Uptime</div>
+          <div className="bg-yellow-600/20 backdrop-blur-sm rounded-lg p-4 border border-yellow-400/30 hover:border-yellow-400/60 transition-all">
+            <div className="text-3xl font-bold text-white mb-1">24/7</div>
+            <div className="text-yellow-200 text-sm">AI Availability</div>
           </div>
         </div>
 

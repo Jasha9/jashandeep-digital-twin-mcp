@@ -18,12 +18,13 @@ const ChatbotWidget: React.FC<ChatbotWidgetProps> = ({ isOpen = false, onToggle 
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: 'Hello! I\'m Jashandeep\'s Digital Twin. Ask me anything about his experience, skills, or projects!',
+      content: 'Hello! I\'m Jashandeep\'s Digital Twin. Ask me anything about his experience, skills, or projects! 🤖\n\n💡 **Tip**: Please wait 30 seconds between questions to avoid rate limits.',
       timestamp: new Date()
     }
   ])
   const [inputMessage, setInputMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [lastRequestTime, setLastRequestTime] = useState(0)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Sync with external state
@@ -49,6 +50,22 @@ const ChatbotWidget: React.FC<ChatbotWidgetProps> = ({ isOpen = false, onToggle 
   const sendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return
 
+    // Rate limiting: enforce 15-second minimum between requests
+    const now = Date.now()
+    const timeSinceLastRequest = now - lastRequestTime
+    const minInterval = 15000 // 15 seconds
+
+    if (timeSinceLastRequest < minInterval && lastRequestTime > 0) {
+      const waitTime = Math.ceil((minInterval - timeSinceLastRequest) / 1000)
+      const rateLimitMessage: Message = {
+        role: 'assistant',
+        content: `⏳ **Please wait ${waitTime} more seconds** before asking another question to avoid rate limits. This ensures reliable responses! 🤖`,
+        timestamp: new Date()
+      }
+      setMessages(prev => [...prev, rateLimitMessage])
+      return
+    }
+
     const userMessage: Message = {
       role: 'user',
       content: inputMessage.trim(),
@@ -58,6 +75,7 @@ const ChatbotWidget: React.FC<ChatbotWidgetProps> = ({ isOpen = false, onToggle 
     setMessages(prev => [...prev, userMessage])
     setInputMessage('')
     setIsLoading(true)
+    setLastRequestTime(now)
 
     try {
       const response = await fetch('/api/digital-twin', {
@@ -70,24 +88,42 @@ const ChatbotWidget: React.FC<ChatbotWidgetProps> = ({ isOpen = false, onToggle 
         }),
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to get response')
-      }
-
       const data = await response.json()
       
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content: data.success ? (data.answer || 'Sorry, I couldn\'t find an answer.') : (data.error || 'Sorry, I couldn\'t process that request.'),
-        timestamp: new Date()
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to get response')
+      }
+      
+      let assistantMessage: Message
+
+      // Handle rate limiting specifically
+      if (!data.success && data.error && data.error.includes('Rate limit exceeded')) {
+        assistantMessage = {
+          role: 'assistant',
+          content: '⏳ **Rate Limit Reached** - Please wait 30-60 seconds before your next question. Your Digital Twin services (Groq AI + Upstash) are working perfectly - just need a brief pause! 🤖✨',
+          timestamp: new Date()
+        }
+      } else {
+        assistantMessage = {
+          role: 'assistant',
+          content: data.success ? (data.answer || 'Sorry, I couldn\'t find an answer.') : (data.error || 'Sorry, I couldn\'t process that request.'),
+          timestamp: new Date()
+        }
       }
 
       setMessages(prev => [...prev, assistantMessage])
     } catch (error) {
       console.error('Chat error:', error)
+      
+      let errorContent = 'Sorry, I\'m having trouble connecting right now. Please try again in a moment.'
+      
+      if (error instanceof Error && error.message.includes('Rate limit')) {
+        errorContent = '⏳ **Rate Limit** - Please wait 30-60 seconds between questions. Your services need a brief pause! 🤖'
+      }
+      
       const errorMessage: Message = {
         role: 'assistant',
-        content: 'Sorry, I\'m having trouble connecting right now. Please try again.',
+        content: errorContent,
         timestamp: new Date()
       }
       setMessages(prev => [...prev, errorMessage])

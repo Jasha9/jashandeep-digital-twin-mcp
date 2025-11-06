@@ -47,9 +47,19 @@ export async function POST(request: NextRequest) {
     
   } catch (error) {
     console.error('API Error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    
+    // Handle rate limiting specifically
+    if (errorMessage.includes('rate limit') || errorMessage.includes('Rate limit')) {
+      return NextResponse.json({
+        success: false,
+        error: 'Rate limit exceeded: Request frequency limit exceeded. Please wait a moment.'
+      }, { status: 429 })
+    }
+    
     return NextResponse.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: errorMessage
     }, { status: 500 })
   }
 }

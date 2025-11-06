@@ -1,12 +1,18 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
 import aboutData from '@/data/about.json'
 
 export default function Hero() {
-  const [isChatOpen, setIsChatOpen] = useState(false)
   const skills = ['Next.js', 'Groq AI', 'Upstash Vector', 'RAG Systems', 'Full-Stack Developer']
+  
+  const openChat = () => {
+    // Find and click the chatbot button
+    const chatButton = document.querySelector('[aria-label="Toggle chat"]') as HTMLButtonElement
+    if (chatButton) {
+      chatButton.click()
+    }
+  }
   
   return (
     <section className="relative min-h-screen flex items-center justify-center px-6 py-20">
@@ -50,7 +56,7 @@ export default function Hero() {
         {/* Call to Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
           <button
-            onClick={() => setIsChatOpen(true)}
+            onClick={openChat}
             className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-lg transition-all transform hover:scale-105 shadow-lg shadow-blue-500/50 flex items-center gap-2"
           >
             <span>Chat with My Digital Twin</span>

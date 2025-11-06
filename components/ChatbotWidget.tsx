@@ -105,11 +105,26 @@ const ChatbotWidget: React.FC<ChatbotWidgetProps> = ({ isOpen = false, onToggle 
 
   return (
     <>
+      {/* Backdrop overlay when chat is open */}
+      {isChatOpen && (
+        <div 
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[99990]"
+          style={{ position: 'fixed', zIndex: 99990 }}
+          onClick={toggleChat}
+        />
+      )}
+      
       {/* Floating Chat Button */}
       <button
         onClick={toggleChat}
-        className="fixed bottom-4 right-4 w-14 h-14 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-full shadow-xl transition-all duration-200 z-[9999] flex items-center justify-center"
-        style={{ position: 'fixed', bottom: '16px', right: '16px', zIndex: 9999 }}
+        className="fixed bottom-4 right-4 w-14 h-14 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white rounded-full shadow-xl transition-all duration-200 z-[99999] flex items-center justify-center"
+        style={{ 
+          position: 'fixed', 
+          bottom: '16px', 
+          right: '16px', 
+          zIndex: 99999,
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+        }}
         aria-label="Toggle chat"
       >
         {isChatOpen ? (
@@ -123,8 +138,15 @@ const ChatbotWidget: React.FC<ChatbotWidgetProps> = ({ isOpen = false, onToggle 
 
       {/* Chat Window */}
       {isChatOpen && (
-        <div className="fixed bottom-20 right-4 w-80 h-96 bg-white/95 backdrop-blur-xl border border-gray-200 rounded-2xl shadow-2xl z-[9998] flex flex-col overflow-hidden"
-             style={{ position: 'fixed', bottom: '80px', right: '16px', zIndex: 9998 }}>
+        <div className="fixed bottom-20 right-4 w-80 h-96 bg-white backdrop-blur-xl border border-gray-300 rounded-2xl shadow-2xl z-[99999] flex flex-col overflow-hidden"
+             style={{ 
+               position: 'fixed', 
+               bottom: '80px', 
+               right: '16px', 
+               zIndex: 99999,
+               backgroundColor: 'white',
+               boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+             }}>
           {/* Chat Header */}
           <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-3 border-b border-gray-200">
             <div className="flex items-center justify-between">

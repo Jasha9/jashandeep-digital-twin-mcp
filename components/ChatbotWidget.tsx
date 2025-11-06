@@ -43,7 +43,7 @@ export default function ChatbotWidget() {
     setIsLoading(true)
 
     try {
-      const response = await fetch('https://jashandeep-digital-twin-mcp.vercel.app/api/digital-twin', {
+      const response = await fetch('/api/digital-twin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question: userMessage.content })

@@ -1,0 +1,118 @@
+{
+  "projects": [
+    {
+      "id": "digital-twin-mcp",
+      "name": "Digital Twin MCP Server",
+      "tagline": "AI-Powered Professional Assistant",
+      "description": "Enterprise-grade AI digital twin using Retrieval-Augmented Generation (RAG) architecture to provide intelligent, contextual responses about professional background and expertise. Achieved 85%+ recruiter satisfaction rate with STAR-format interview responses.",
+      "longDescription": "A comprehensive digital twin system that represents professional identity through AI. Built with advanced RAG architecture, multi-provider AI system (Groq + OpenAI fallback), intelligent caching for 60-80% cost reduction, and real-time analytics. Includes interview optimization framework with STAR method integration and company-specific response customization.",
+      "technologies": ["Next.js 16", "React 19", "Groq AI", "Upstash Vector", "RAG Systems", "Vercel AI Gateway", "TypeScript", "Tailwind CSS"],
+      "features": [
+        "Multi-provider AI system with 99.9% uptime",
+        "Intelligent response caching (60-80% cost reduction)",
+        "STAR format interview optimization",
+        "Company-specific response customization",
+        "Real-time analytics and monitoring",
+        "MCP server integration with Claude Desktop"
+      ],
+      "metrics": {
+        "satisfaction": "85%+ recruiter satisfaction",
+        "responseTime": "Sub-500ms average",
+        "uptime": "99.9% with multi-provider fallbacks",
+        "dataPoints": "105 professional data points"
+      },
+      "github": "https://github.com/Jasha9/jashandeep-digital-twin-mcp",
+      "liveDemo": "https://jashandeep-digital-twin-mcp.vercel.app",
+      "status": "Production",
+      "featured": true,
+      "category": "AI/ML"
+    },
+    {
+      "id": "food-rag-explorer",
+      "name": "Food RAG Explorer",
+      "tagline": "AI-Powered Food Intelligence System",
+      "description": "Intelligent food recommendation system providing insights about 105 different food items based on country and dietary preferences using vector-based similarity search and real-time AI insights.",
+      "longDescription": "AI-powered web application that uses RAG architecture to deliver intelligent food recommendations. Successfully migrated from local setup (Ollama + ChromaDB) to production cloud architecture (Groq + Upstash). Features semantic search, dietary filtering, and personalized recommendations.",
+      "technologies": ["React 19", "Next.js 15", "Groq API", "Upstash Vector", "RAG Systems", "Vector Embeddings", "Vercel"],
+      "features": [
+        "Semantic search across 105 food items",
+        "Country and dietary preference filtering",
+        "Vector-based similarity recommendations",
+        "Real-time AI insights generation",
+        "Responsive web interface",
+        "Cloud-native architecture"
+      ],
+      "metrics": {
+        "dataSize": "105 food items integrated",
+        "responseTime": "Sub-30ms query times",
+        "deployment": "100% uptime on Vercel"
+      },
+      "github": "https://github.com/Jasha9",
+      "liveDemo": "https://food-rag-explorer.vercel.app",
+      "status": "Production",
+      "featured": true,
+      "category": "AI/ML"
+    },
+    {
+      "id": "verifyit",
+      "name": "VerifyIt",
+      "tagline": "Cyber Fraud Detection Application",
+      "description": "Cybersecurity application designed to detect and prevent online fraud through intelligent verification systems. Focuses on protecting users from common cyber threats including phishing, scams, and identity theft.",
+      "longDescription": "A comprehensive fraud detection system that helps users verify the authenticity of online interactions. Built with modern web technologies and security best practices, VerifyIt provides real-time threat analysis and user protection mechanisms.",
+      "technologies": ["React", "Next.js", "TypeScript", "Tailwind CSS", "Security APIs", "Node.js"],
+      "features": [
+        "Real-time fraud detection algorithms",
+        "URL and email verification",
+        "Phishing attempt identification",
+        "User-friendly security reporting",
+        "Educational security resources",
+        "Secure data handling practices"
+      ],
+      "github": "https://github.com/Jasha9",
+      "status": "In Development",
+      "featured": true,
+      "category": "Cybersecurity"
+    },
+    {
+      "id": "cyber-awareness-guide",
+      "name": "Cyber Awareness Guide Website",
+      "tagline": "Cybersecurity Education Platform",
+      "description": "Educational platform designed to raise cybersecurity awareness and teach best practices for online safety. Provides comprehensive guides, interactive tutorials, and real-world case studies.",
+      "longDescription": "An educational website focused on making cybersecurity knowledge accessible to everyone. Features interactive learning modules, practical security tips, and up-to-date threat information to help users protect themselves online.",
+      "technologies": ["HTML5", "CSS3", "JavaScript", "Responsive Design", "Web Accessibility"],
+      "features": [
+        "Interactive cybersecurity tutorials",
+        "Real-world threat case studies",
+        "Best practices documentation",
+        "Security assessment tools",
+        "Mobile-responsive design",
+        "Accessible content for all users"
+      ],
+      "github": "https://github.com/Jasha9",
+      "status": "Completed",
+      "featured": false,
+      "category": "Education"
+    },
+    {
+      "id": "portfolio-website",
+      "name": "Personal Portfolio Website",
+      "tagline": "Modern Developer Portfolio",
+      "description": "Professional portfolio website showcasing projects, skills, and experience. Features integrated Digital Twin chatbot, dark/light mode, and smooth animations powered by Framer Motion.",
+      "longDescription": "A modern, responsive portfolio built with Next.js 16 and React 19. Demonstrates full-stack development capabilities and design sensibility. Features seamless integration with the Digital Twin MCP Server for AI-powered interactions.",
+      "technologies": ["Next.js 16", "React 19", "TypeScript", "Tailwind CSS", "Framer Motion", "Vercel"],
+      "features": [
+        "Integrated AI chatbot assistant",
+        "Dark/light mode with persistence",
+        "Smooth page transitions",
+        "Mobile-first responsive design",
+        "SEO optimized",
+        "Fast deployment on Vercel"
+      ],
+      "github": "https://github.com/Jasha9",
+      "liveDemo": "https://jashandeep-kaur.vercel.app",
+      "status": "Production",
+      "featured": false,
+      "category": "Web Development"
+    }
+  ]
+}

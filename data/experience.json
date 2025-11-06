@@ -1,0 +1,142 @@
+{
+  "experience": [
+    {
+      "id": "ausbiz-fullstack",
+      "company": "Employability Advantage (Ausbiz Consulting)",
+      "position": "Full Stack Developer Intern",
+      "type": "Internship",
+      "duration": "May 2025 - July 2025",
+      "durationMonths": "10 weeks",
+      "location": "Brisbane, Australia",
+      "description": "Intensive full-stack development program focusing on modern web technologies, database management, and production deployment pipelines.",
+      "responsibilities": [
+        "Built full-stack web applications using React 19, Next.js 15, and TypeScript",
+        "Implemented database solutions with PostgreSQL and Prisma ORM",
+        "Developed RESTful APIs and serverless functions",
+        "Created responsive UI components with Tailwind CSS",
+        "Integrated GenAI features using various LLM APIs",
+        "Implemented automated CI/CD pipelines from GitHub to Vercel"
+      ],
+      "achievements": [
+        "Successfully completed intensive 10-week program with distinction",
+        "Earned Full Stack Developer certification",
+        "Deployed multiple production applications to Vercel with zero downtime",
+        "Built comprehensive full-stack applications with modern architectural patterns"
+      ],
+      "technologies": ["React 19", "Next.js 15", "Node.js", "TypeScript", "Tailwind CSS", "PostgreSQL", "Prisma ORM", "Vercel", "GitHub Actions", "LLM APIs"],
+      "highlights": [
+        {
+          "title": "Production Deployments",
+          "description": "Successfully deployed 5+ applications to production with automated CI/CD"
+        },
+        {
+          "title": "Full-Stack Mastery",
+          "description": "Gained hands-on experience across frontend, backend, and database layers"
+        },
+        {
+          "title": "AI Integration",
+          "description": "Integrated LLM APIs and GenAI features into production applications"
+        }
+      ]
+    },
+    {
+      "id": "digital-twin-project",
+      "company": "Personal Project",
+      "position": "AI/ML Developer & Architect",
+      "type": "Project",
+      "duration": "July 2025 - Present",
+      "durationMonths": "5 months",
+      "location": "Brisbane, Australia",
+      "description": "Designed and developed enterprise-grade Digital Twin MCP Server with advanced RAG architecture, achieving 85%+ recruiter satisfaction rate through intelligent interview optimization.",
+      "responsibilities": [
+        "Architected and implemented RAG system with Upstash Vector database",
+        "Integrated multi-provider AI system (Groq + OpenAI) with intelligent fallbacks",
+        "Developed STAR format interview optimization framework",
+        "Built company-specific response customization for Brisbane tech market",
+        "Implemented real-time analytics and performance monitoring",
+        "Created MCP server integration with Claude Desktop"
+      ],
+      "achievements": [
+        "Achieved 85%+ recruiter satisfaction rate with optimized responses",
+        "Built production system with 99.9% uptime and sub-500ms response times",
+        "Reduced AI costs by 60-80% through intelligent caching strategies",
+        "Processed and integrated 105 professional data points with vector embeddings",
+        "Successfully deployed to Vercel with enterprise-grade reliability"
+      ],
+      "technologies": ["Next.js 16", "React 19", "Groq AI", "OpenAI", "Upstash Vector", "RAG Systems", "Vector Embeddings", "Vercel AI Gateway", "TypeScript", "Tailwind CSS"],
+      "highlights": [
+        {
+          "title": "RAG Architecture",
+          "description": "Built advanced retrieval-augmented generation system with semantic search"
+        },
+        {
+          "title": "Interview Optimization",
+          "description": "85%+ satisfaction rate with STAR format behavioral responses"
+        },
+        {
+          "title": "Enterprise Infrastructure",
+          "description": "Multi-provider AI system with caching, analytics, and 99.9% uptime"
+        }
+      ]
+    },
+    {
+      "id": "food-rag-project",
+      "company": "Personal Project",
+      "position": "Full Stack & AI Developer",
+      "type": "Project",
+      "duration": "August 2025 - September 2025",
+      "durationMonths": "2 months",
+      "location": "Brisbane, Australia",
+      "description": "Developed AI-powered food recommendation system using RAG architecture with vector-based similarity search and real-time insights generation.",
+      "responsibilities": [
+        "Built complete web application with React 19 and Next.js 15",
+        "Migrated from local setup (Ollama + ChromaDB) to cloud architecture (Groq + Upstash)",
+        "Implemented vector embeddings and semantic search for 105 food items",
+        "Integrated Groq API for real-time AI insights",
+        "Designed responsive UI with V0.dev and Tailwind CSS",
+        "Deployed production system to Vercel with CI/CD automation"
+      ],
+      "achievements": [
+        "Successfully migrated from local to cloud-native architecture",
+        "Achieved sub-30ms query response times with vector search",
+        "Deployed production application with 100% uptime",
+        "Gained hands-on experience with RAG systems and vector databases"
+      ],
+      "technologies": ["React 19", "Next.js 15", "Groq API", "Upstash Vector", "RAG Systems", "Vector Embeddings", "Vercel"],
+      "highlights": [
+        {
+          "title": "Cloud Migration",
+          "description": "Successfully transitioned from local to production cloud architecture"
+        },
+        {
+          "title": "Vector Search",
+          "description": "Implemented semantic search with sub-30ms response times"
+        },
+        {
+          "title": "Production Deployment",
+          "description": "Live application on Vercel with automated deployment pipeline"
+        }
+      ]
+    }
+  ],
+  "certifications": [
+    {
+      "name": "Full Stack Developer Certification",
+      "issuer": "Employability Advantage",
+      "date": "July 2025",
+      "description": "Comprehensive certification covering React, Next.js, Node.js, PostgreSQL, and modern deployment practices"
+    },
+    {
+      "name": "Bachelor of Information Technology",
+      "issuer": "Victoria University",
+      "date": "Expected 2025",
+      "description": "Major in Web and Mobile App Development"
+    }
+  ],
+  "skills_summary": {
+    "years_experience": "2+",
+    "projects_completed": "10+",
+    "technologies_mastered": "50+",
+    "production_deployments": "5+"
+  }
+}

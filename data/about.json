@@ -1,0 +1,43 @@
+{
+  "name": "Jashandeep Kaur",
+  "title": "AI & Web Developer",
+  "tagline": "Building intelligent systems that bridge AI and human insight",
+  "education": {
+    "degree": "Bachelor of Information Technology",
+    "university": "Victoria University",
+    "major": "Web and Mobile App Development",
+    "location": "Melbourne, Australia",
+    "graduationYear": "2025",
+    "achievements": [
+      "Full Stack Developer Certification from Employability Advantage",
+      "Completed intensive 10-week full-stack development program with distinction",
+      "Specialized in modern web technologies and AI integration"
+    ]
+  },
+  "location": "Brisbane, Australia",
+  "email": "jashandeep.kaur.dev@gmail.com",
+  "github": "https://github.com/Jasha9",
+  "linkedin": "https://linkedin.com/in/jashandeep-kaur-it",
+  "bio": "Aspiring front-end developer with a passion for AI, cybersecurity, and full-stack development. I specialize in building production-ready AI systems using cutting-edge technologies like Retrieval-Augmented Generation (RAG), Next.js, and cloud deployment pipelines. My work focuses on creating intelligent, user-centric applications that solve real-world problems.",
+  "skills": {
+    "frontend": ["React 19", "Next.js 15/16", "TypeScript", "Tailwind CSS", "HTML5", "CSS3", "JavaScript ES6+"],
+    "backend": ["Node.js", "PostgreSQL", "Prisma ORM", "RESTful APIs", "Serverless Functions"],
+    "aiml": ["Groq AI", "RAG Systems", "Vector Embeddings", "Upstash Vector", "LLM Integration", "OpenAI API"],
+    "tools": ["Git", "GitHub", "VS Code", "Vercel", "GitHub Actions", "Claude Desktop", "MCP Servers"],
+    "other": ["Responsive Design", "UI/UX Design", "SEO Optimization", "CI/CD Pipelines", "API Integration"]
+  },
+  "interests": [
+    "Artificial Intelligence & Machine Learning",
+    "Cybersecurity & Fraud Detection",
+    "Full-Stack Web Development",
+    "Cloud Architecture & Deployment",
+    "Developer Tools & Productivity",
+    "Open Source Contribution"
+  ],
+  "professionalGoals": [
+    "Build enterprise-grade AI applications that enhance human productivity",
+    "Contribute to open-source AI and web development projects",
+    "Continuously learn and master emerging technologies",
+    "Help bridge the gap between AI capabilities and practical business solutions"
+  ]
+}

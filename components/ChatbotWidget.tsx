@@ -66,7 +66,7 @@ const ChatbotWidget: React.FC<ChatbotWidgetProps> = ({ isOpen = false, onToggle 
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          message: userMessage.content
+          question: userMessage.content
         }),
       })
 
@@ -78,7 +78,7 @@ const ChatbotWidget: React.FC<ChatbotWidgetProps> = ({ isOpen = false, onToggle 
       
       const assistantMessage: Message = {
         role: 'assistant',
-        content: data.response || 'Sorry, I couldn\'t process that request.',
+        content: data.success ? (data.answer || 'Sorry, I couldn\'t find an answer.') : (data.error || 'Sorry, I couldn\'t process that request.'),
         timestamp: new Date()
       }
 

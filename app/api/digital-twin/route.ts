@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { question } = body
+    const { question, conversationHistory } = body
 
     if (!question || typeof question !== 'string') {
       return NextResponse.json({
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const result = await queryDigitalTwin(question)
+    const result = await queryDigitalTwin(question, conversationHistory)
     return NextResponse.json(result)
     
   } catch (error) {

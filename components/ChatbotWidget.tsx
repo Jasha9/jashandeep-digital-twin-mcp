@@ -84,7 +84,11 @@ const ChatbotWidget: React.FC<ChatbotWidgetProps> = ({ isOpen = false, onToggle 
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          question: userMessage.content
+          question: userMessage.content,
+          conversationHistory: messages.slice(-6).map(m => ({
+            role: m.role,
+            content: m.content
+          }))
         }),
       })
 

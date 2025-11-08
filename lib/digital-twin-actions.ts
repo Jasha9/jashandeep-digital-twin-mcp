@@ -1,11 +1,10 @@
 "use server"
 
 import { Index } from "@upstash/vector"
-import Groq from "groq-sdk"
+import { VercelAIService } from './vercel-ai-service'
 import { AnalyticsEngine } from './analytics/engine'
 import { SemanticCache } from './analytics/semantic-cache'
 import { RealTimeMonitor } from './analytics/real-time-monitor'
-import { groqTracker, GroqErrorHandler, GroqErrorType } from './groq-tracker'
 
 // Performance monitoring and logging
 const performance = {
@@ -64,26 +63,13 @@ function createIndex() {
   return new Index({ url, token })
 }
 
-function createGroqClient() {
-  const apiKey = process.env.GROQ_API_KEY
-  
-  if (!apiKey) {
-    throw new DigitalTwinError(
-      'Missing Groq API key',
-      'MISSING_GROQ_KEY'
-    )
-  }
-  
-  return new Groq({ apiKey })
-}
-
 // Initialize clients with error handling
 let index: Index
-let groq: Groq
+let aiService: VercelAIService
 
 try {
   index = createIndex()
-  groq = createGroqClient()
+  aiService = VercelAIService.getInstance()
 } catch (error) {
   console.error('Failed to initialize Digital Twin clients:', error)
   throw error
@@ -260,7 +246,7 @@ async function queryVectorWithRetry(question: string, maxRetries: number = 3): P
       
       const results = await index.query({
         data: question,
-        topK: 3,
+        topK: 8,
         includeMetadata: true,
         filter: "namespace = 'dt'"
       })
@@ -284,146 +270,34 @@ async function queryVectorWithRetry(question: string, maxRetries: number = 3): P
   return []
 }
 
-// Generate AI response with intelligent retry logic and usage tracking
+// Generate AI response with Vercel AI Gateway (automatic retry and fallback)
 async function generateAIResponseWithRetry(prompt: string, maxRetries: number = 3): Promise<string> {
-  // Check rate limits before proceeding
-  const rateLimitCheck = await groqTracker.checkRateLimits()
-  if (!rateLimitCheck.allowed) {
+  try {
+    console.log('AI: Generating response with Vercel AI Gateway')
+    
+    const response = await aiService.generateResponse(prompt, {
+      temperature: 0.3,
+      maxTokens: 300,
+      useCache: true,
+      priority: 'speed'
+    })
+    
+    if (response.cached) {
+      console.log('AI: Response retrieved from cache')
+    } else {
+      console.log(`AI: Response generated with ${response.model} in ${response.responseTime}ms`)
+    }
+    
+    return response.text
+    
+  } catch (error) {
+    console.error('AI: Generation failed with Vercel AI Gateway:', error)
     throw new DigitalTwinError(
-      `Rate limit exceeded: ${rateLimitCheck.reason}`,
-      'RATE_LIMIT_EXCEEDED'
+      `AI response generation failed: ${error.message}`,
+      'AI_GENERATION_FAILED',
+      { originalError: error }
     )
   }
-
-  // Intelligent model selection based on performance history
-  const bestModel = groqTracker.getBestPerformingModel()
-  const models = [bestModel, "llama-3.1-8b-instant", "llama-3.1-70b-versatile", "mixtral-8x7b-32768"]
-    .filter((model, index, arr) => arr.indexOf(model) === index) // Remove duplicates
-  
-  for (const model of models) {
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      const startTime = Date.now()
-      let success = false
-      let tokensUsed = 0
-      
-      try {
-        console.log(`AI: Generating response with ${model} (attempt ${attempt}/${maxRetries})`)
-        
-        const completion = await groq.chat.completions.create({
-          model,
-          messages: [
-            {
-              role: "system",
-              content: `You are Jashandeep Kaur's AI digital twin. Answer authentically as Jashandeep in first person using the optimized context provided.
-
-🎯 KEY ACHIEVEMENTS TO HIGHLIGHT:
-- Victoria University Final Year Student with 6.17/7.0 GPA (Outstanding Performance)
-- HIGH DISTINCTION in 6 subjects including 96/100 in Data Analytics for Cyber Security
-- Mobile Application Development: 83/100
-- AI Builder Intern at ausbiz Consulting developing enterprise digital twins
-- 100+ students mentored at Victoria University
-
-⚡ OPTIMIZED 3-SOURCE SYSTEM GUIDELINES:
-- Use ALL relevant information from the 3 optimized context sources
-- ALWAYS mention 6.17 GPA and 96/100 achievement for education questions
-- Emphasize High Distinction performance and academic excellence
-- Highlight rapid learning through VU's 4-week block system
-- NEVER make up information not in the provided context
-- Do NOT mention: University of Edinburgh, Masters degrees, or unverified institutions
-
-📚 EDUCATION FOCUS (Prioritize these details):
-- Bachelor of Information Technology at Victoria University (VU), graduating June 2026
-- GPA: 6.17/7.0 with High Distinction in 6 subjects
-- Exceptional performance: 96/100 in Data Analytics for Cyber Security
-- Strong performance: 83/100 in Mobile Application Development
-- Rapid learning abilities through intensive 4-week block model
-
-💼 PROFESSIONAL EXPERIENCE:
-- Current: AI Builder Intern at ausbiz Consulting (enterprise digital twins)
-- Previous: Full Stack Developer Intern at ausbiz Consulting
-- Mentoring: 100+ students at Victoria University
-- Customer service: Hotel receptionist role
-
-🚫 OUT-OF-SCOPE QUESTIONS HANDLING:
-If asked about topics not covered in your context (sports, cooking, travel, unrelated industries, personal life beyond professional/academic, etc.), respond professionally:
-
-"That's not something I have experience with or information about in my professional background. However, I'd be happy to discuss my expertise in [mention relevant area from context - AI/ML development, full-stack programming, academic achievements, mentoring, digital twin systems, etc.]. Is there something specific about my technical skills, educational background, or professional experience you'd like to know more about?"
-
-For education questions, be comprehensive (150-200 words) highlighting academic excellence. For other topics, be concise but redirect to relevant expertise when appropriate.`
-            },
-            {
-              role: "user", 
-              content: prompt
-            }
-          ],
-          temperature: 0.3,
-          max_tokens: 300,
-        })
-        
-        // Extract usage statistics
-        tokensUsed = (completion.usage?.prompt_tokens || 0) + (completion.usage?.completion_tokens || 0)
-        success = true
-        
-        const answer = completion.choices[0]?.message?.content?.trim()
-        if (answer) {
-          console.log(`AI: Response generated successfully with ${model}`)
-          
-          // Track successful request
-          groqTracker.trackRequest(
-            model,
-            completion.usage?.prompt_tokens || 0,
-            completion.usage?.completion_tokens || 0,
-            Date.now() - startTime,
-            true
-          )
-          
-          return answer
-        }
-        
-      } catch (error) {
-        const errorType = GroqErrorHandler.classifyError(error)
-        const responseTime = Date.now() - startTime
-        
-        console.warn(`AI generation attempt ${attempt} with ${model} failed:`, {
-          error: error.message,
-          type: errorType,
-          responseTime
-        })
-        
-        // Track failed request
-        groqTracker.trackRequest(
-          model,
-          0,
-          0,
-          responseTime,
-          false
-        )
-        
-        // Check if we should retry
-        if (!GroqErrorHandler.shouldRetry(errorType, attempt, maxRetries)) {
-          console.log(`AI: Not retrying ${model} due to error type: ${errorType}`)
-          break
-        }
-        
-        if (attempt === maxRetries && model === models[models.length - 1]) {
-          throw new DigitalTwinError(
-            `AI response generation failed with all models. Last error: ${error.message}`,
-            'AI_GENERATION_FAILED',
-            { originalError: error, errorType }
-          )
-        }
-        
-        // Intelligent backoff based on error type
-        const backoffTime = GroqErrorHandler.getBackoffTime(errorType, attempt)
-        if (backoffTime > 0) {
-          console.log(`AI: Waiting ${backoffTime}ms before retry`)
-          await new Promise(resolve => setTimeout(resolve, backoffTime))
-        }
-      }
-    }
-  }
-  
-  throw new DigitalTwinError('All AI generation attempts failed', 'AI_GENERATION_EXHAUSTED')
 }
 
 /**
@@ -431,7 +305,10 @@ For education questions, be comprehensive (150-200 words) highlighting academic 
  * This function searches the vector database for relevant information
  * and generates a personalized response using AI
  */
-export async function queryDigitalTwin(question: string): Promise<DigitalTwinResponse> {
+export async function queryDigitalTwin(
+  question: string, 
+  conversationHistory?: Array<{ role: string; content: string }>
+): Promise<DigitalTwinResponse> {
   const startTime = Date.now()
   const sessionId = getSessionId()
   let vectorSearchTime = 0
@@ -559,22 +436,86 @@ export async function queryDigitalTwin(question: string): Promise<DigitalTwinRes
     // Step 4: Generate AI response using Groq with retry logic
     const context = contextChunks.join('\n\n')
     const isEducationQuestion = /education|degree|university|study|qualification|certification|learning|academic|skill|expertise|blockstar/i.test(sanitizedQuestion)
+    const isTechnicalQuestion = /project|code|programming|technology|software|development|technical|experience|work/i.test(sanitizedQuestion)
+    const isBehavioralQuestion = /challenge|team|conflict|leadership|strength|weakness|mentor|teach/i.test(sanitizedQuestion)
     
-    const prompt = `Answer using ALL relevant information from the context below. Provide comprehensive responses for education topics.
+    let responseGuidance = ''
+    if (isEducationQuestion) {
+      responseGuidance = '- Draw from educational achievements, learning experiences, and academic journey\n- Include coursework, GPA, and how VU\'s block system shaped your learning\n- Comprehensive (150-200 words)'
+    } else if (isTechnicalQuestion) {
+      responseGuidance = '- Focus on relevant projects, technologies, and hands-on experience\n- Mention specific tools, frameworks, and problem-solving approaches\n- Technical depth (120-180 words)'
+    } else if (isBehavioralQuestion) {
+      responseGuidance = '- Share specific examples from work, mentoring, or collaborative projects\n- Use STAR format when describing experiences\n- Balanced (100-150 words)'
+    } else {
+      responseGuidance = '- Draw from the most relevant context sources\n- Provide a well-rounded perspective\n- Concise (80-120 words)'
+    }
+    
+    const systemPrompt = `You are Jashandeep Kaur's AI digital twin. Answer authentically as Jashandeep in first person.
 
-CONTEXT FROM JASHANDEEP'S PROFILE:
+🎯 CORE PRINCIPLE: Draw from ALL DIVERSE CONTEXT provided to give well-rounded, comprehensive answers.
+
+✅ RESPONSE GUIDELINES:
+- Analyze ALL context sources provided - don't fixate on one achievement
+- Vary your responses based on what's MOST relevant to the specific question
+- Combine information from multiple sources (education, work, projects, skills)
+- Be authentic - mention different experiences, not just top grades
+- Balance breadth and depth based on question type
+- NEVER fabricate information not in the context
+- Do NOT mention: University of Edinburgh, Masters degrees, or unverified institutions
+- Remember conversation history for follow-up questions
+
+📊 DIVERSE BACKGROUND ELEMENTS:
+EDUCATION: Victoria University IT student (graduating June 2026), 6.17/7.0 GPA, strong performer in data analytics and mobile dev
+WORK: AI Builder & Full Stack Developer Intern at ausbiz Consulting, building enterprise systems
+MENTORING: 100+ VU students mentored in programming and career development  
+SKILLS: Full-stack development, AI/ML, RAG systems, databases, React, Python, TypeScript
+PROJECTS: Digital twins, AI chatbots, web applications, mobile apps
+QUALITIES: Fast learner, collaborative, problem-solver, passionate about AI
+
+🎨 ANSWER CONSTRUCTION:
+1. Identify what the question is REALLY asking about
+2. Pull relevant details from MULTIPLE context sources
+3. Weave together a cohesive narrative using diverse information
+4. Don't repeat the same achievement in every answer
+5. Show different facets of experience based on the question
+
+⭐ STAR METHOD (for behavioral questions):
+When using STAR approach, tell the story NATURALLY without labels:
+- DON'T use "Situation:", "Task:", "Action:", "Result:" headings
+- DO weave the story naturally like: "When I was working on X, I faced Y challenge. I approached it by doing Z, which resulted in W."
+- Be conversational and storytelling, not structured/robotic
+- Make it flow like a real conversation
+
+🚫 OUT-OF-SCOPE HANDLING:
+For topics outside professional/academic scope (sports, cooking, unrelated industries), redirect:
+"That's not something I have experience with in my professional background. However, I'd be happy to discuss my expertise in [relevant area from context]. Is there something specific about my technical skills, educational background, or professional experience you'd like to know more about?"
+
+📏 LENGTH: Education questions (150-200 words), Technical/Behavioral (100-150 words), Others (80-120 words)`
+
+    // Build conversation context if history exists
+    let conversationContext = ''
+    if (conversationHistory && conversationHistory.length > 0) {
+      conversationContext = '\n\nPREVIOUS CONVERSATION:\n' + 
+        conversationHistory.map(msg => `${msg.role === 'user' ? 'Question' : 'Your Response'}: ${msg.content}`).join('\n') + 
+        '\n\nUse this context to understand follow-up questions and references to previous topics.\n'
+    }
+
+    const prompt = `${systemPrompt}${conversationContext}
+
+IMPORTANT: Analyze ALL ${contextChunks.length} context sources below. Draw from MULTIPLE sources to create a diverse, well-rounded answer. Don't fixate on one achievement.
+
+CONTEXT SOURCES FROM JASHANDEEP'S PROFILE:
 ${context}
 
 QUESTION: ${sanitizedQuestion}
 
 INSTRUCTIONS:
-- Answer as Jashandeep in first person
-- Use ALL relevant information from the context above
-${isEducationQuestion ? 
-  '- For education topics: Include degree, certifications, technical skills, achievements, and expertise areas\n- Be comprehensive (150-250 words) to fully showcase your educational background' :
-  '- Be concise (100-150 words) and interview-appropriate'
-}
-- If context lacks specific details, say "I don't have those specific details in my profile"
+- Answer as Jashandeep in first person, authentically
+- Synthesize information from MULTIPLE context sources above
+- Vary your response - don't repeat the same facts in every answer
+- Choose the MOST relevant details for this specific question
+${responseGuidance}
+- If context lacks specific details, acknowledge it naturally
 - NEVER mention University of Edinburgh or Masters degrees
 
 ANSWER:`
